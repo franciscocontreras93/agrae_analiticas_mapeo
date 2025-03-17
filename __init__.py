@@ -9,9 +9,9 @@
 # (at your option) any later version.
 #---------------------------------------------------------------------
 
-from PyQt5.QtWidgets import QAction, QMessageBox,QToolButton, QComboBox, QLabel, QMenu
+from PyQt5.QtWidgets import QAction, QMessageBox,QToolButton, QComboBox, QLabel, QMenu,  QFileDialog
 from PyQt5.QtCore import QCoreApplication, QSize, Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QPixmap
 
 from qgis.core import QgsProject,QgsRasterLayer
 
@@ -21,21 +21,20 @@ from .gui import aGraeGUI
 from .core.tools import aGraeTools,aGraeGISTools
 from .core.identify import selectTool
 
-
-import asyncio
-import aiohttp
+import os
 
 def classFactory(iface):
-    return AgraeAPP(iface)
+    return agrae_mapeo_proceos(iface)
 
 
-class AgraeAPP:
+class agrae_mapeo_proceos:
     def __init__(self, iface):
         self.iface = iface
         self.tools = aGraeTools()
-        self.menu = self.tr(u'&Mapeo Integral | aGrae')
-        self.toolbar = self.iface.addToolBar(u'&Mapeo Integral | aGrae')
-        self.toolbar.setObjectName(u'&Mapeo Integral | aGrae')
+        self.setWindowTitle()
+        self.menu = self.tr(u'&Analiticas de Mapeo |Mapeo Integral | aGrae')
+        self.toolbar = self.iface.addToolBar(u'&Analiticas de Mapeo |Mapeo Integral | aGrae')
+        self.toolbar.setObjectName(u'&Analiticas de Mapeo |Mapeo Integral | aGrae')
         
 
         self.actions = []
@@ -62,7 +61,7 @@ class AgraeAPP:
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('&aGricultura de Precision | aGrae', message)
+        return QCoreApplication.translate('&Analiticas de Mapeo |Mapeo Integral | aGrae', message)
     
     def add_action(
         self,
@@ -155,8 +154,10 @@ class AgraeAPP:
         # self.comboExplotacion.resize(30,200)
         self.comboExplotacion.setMinimumWidth(300)
         
-        label_title_app = QLabel('Analíticas de Mapeo | Mapeo Integral | aGrae')
-        label_title_app.setStyleSheet("QLabel { background-color : red; color : white; font-weight: bold }")
+        # label_pixmap = QPixmap('gui\img\label_bi.png')
+        # label_title_app = QLabel('Analíticas de Mapeo | Mapeo Integral | aGrae')
+        label_title_app = QLabel('')
+        label_title_app.setPixmap(QPixmap(os.path.join(os.path.dirname(__file__),'gui\img\label_bi.png')))
         self.toolbar.addWidget(label_title_app)
         self.add_action(aGraeGUI().getIcon('login'),'Iniciar Sesion',self.login,add_to_menu=True,add_to_toolbar=True)
         
@@ -166,9 +167,10 @@ class AgraeAPP:
         self.business_inteligence_tool = QToolButton()
         self.business_inteligence_tool.setToolTip('Analíticas de Mapeo | aGrae')
         self.bi_actions.append(self.tools.getAction(parent=self,text='Gestionar Usuarios',callback=lambda: aGraeDialogs().usersDialog(self.sessionToken,self.comboExplotacion.currentData(),self.comboExplotacion.currentText())))
+        self.bi_actions.append(self.tools.getAction(parent=self,text='Cargar Lotes Asociados',callback=lambda: self.load_layer('/app/lotes/','Lotes',self.sessionToken,'lotes')))
         self.bi_actions.append(self.tools.getAction(parent=self,text='Gestionar Almacenamiento',callback=lambda: aGraeDialogs().diskSpaceDialog(self.sessionToken,self.comboCampanias.currentData(),self.comboExplotacion.currentData())))
         self.bi_actions.append(aGraeTools().getAction(parent=self,text='Identificacion',callback=self.activate_identify))
-        # self.bi_actions.append(aGraeTools().getAction(parent=self,text='Generar Reportes',callback=self.activate_identify))
+        self.bi_actions.append(aGraeTools().getAction(parent=self,text='Generar Reportes de Fertilizacion',callback=self.save_csv))
         #* GENERAR REPORTES DE FERTILIZACION EN CSV, REPORTES DE ANALITICA EN CSV LOS REPORTES DEBEN SER UN SUBMENU
         self.add_toolbutton(self.business_inteligence_tool,self.bi_actions,aGraeGUI().getIcon('BI'))
         
@@ -176,14 +178,15 @@ class AgraeAPP:
         self.manager_business_tool.setToolTip('Mapeo de Procesos | aGrae')
         # self.mb_actions.append(self.tools.getAction(parent=self,text='Generar Reporte Excel'))
         # self.mb_actions.append(self.tools.getAction(parent=self,text='Cargar Analisis de Laboratorio'))
+        self.mb_actions.append(self.tools.getAction(parent=self,text='Gestionar Usuarios',callback=lambda: aGraeDialogs().usersDialog(self.sessionToken,self.comboExplotacion.currentData(),self.comboExplotacion.currentText())))
         self.mb_actions.append(self.tools.getAction(parent=self,text='Cargar Lotes',callback=lambda: self.load_layer('/app/lotes/','Lotes',self.sessionToken,'lotes')))
         self.mb_actions.append(self.tools.getAction(parent=self,text='Cargar Segmentos',callback=lambda: self.load_layer('/app/segm/','Segmentos',self.sessionToken,'segmentos')))
         self.mb_actions.append(self.tools.getAction(parent=self,text='Cargar Ambientes Productivos',callback=lambda: self.load_layer('/app/amb/','Ambientes',self.sessionToken,'ambientes')))
         self.mb_actions.append(self.tools.getAction(parent=self,text='Cargar Unid. Fertilización',callback=lambda: self.load_layer('/app/uf/','Und. Fertilizacion',self.sessionToken,'ufs')))
-        self.mb_actions.append(self.tools.getAction(parent=self,text='Cargar Recintos Parcelarios',callback=lambda: aGraeGISTools().load_wms_toc(self.sessionToken,'Parcelas Catastro','Recintos Parcelarios')))
-        self.mb_actions.append(self.tools.getAction(parent=self,text='Cargar Mapa Satelital',callback=lambda: aGraeGISTools().load_wms_toc(self.sessionToken,'PNOA Ortofoto','Ortofoto PNOA')))
+        self.mb_actions.append(self.tools.getAction(parent=self,text='Cargar Recintos Parcelarios',callback=lambda: aGraeGISTools().load_wms_toc(self.sessionToken,'Parcelas Catastro','Parcelas Catastro')))
+        self.mb_actions.append(self.tools.getAction(parent=self,text='Cargar Mapa Satelital',callback=lambda: aGraeGISTools().load_wms_toc(self.sessionToken,'PNOA Ortofoto','PNOA Ortofoto')))
         # self.add_action(aGraeGUI().getIcon('BI'),'Cargar Capas',self.run,add_to_menu=True,add_to_toolbar=True)
-        self.add_toolbutton(self.manager_business_tool,self.mb_actions,aGraeGUI().getIcon('GN'))
+        # self.add_toolbutton(self.manager_business_tool,self.mb_actions,aGraeGUI().getIcon('GN'))
 
 
         return 
@@ -192,7 +195,7 @@ class AgraeAPP:
     def unload(self):
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr(u'&aGricultura de Precision | aGrae'),
+                self.tr(u'&Analiticas de Mapeo |Mapeo Integral | aGrae'),
                 action)
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
@@ -205,6 +208,10 @@ class AgraeAPP:
             
             self.comboCampanias.setEnabled(True)
             self.comboExplotacion.setEnabled(True)
+
+            self.load_layer('/app/lotes/','Lotes',self.sessionToken,'lotes')
+            aGraeGISTools().load_wms_toc(self.sessionToken,'PNOA Ortofoto','PNOA Ortofoto')
+
     
     def fill_combo_campanias(self,data:dict) -> None:
         self.sessionToken = data
@@ -214,6 +221,9 @@ class AgraeAPP:
             self.comboCampanias.addItem(v['name'],k)
             # print(k,v)
         
+        self.comboCampanias.setCurrentIndex(self.comboCampanias.count()-1)
+        
+        self.setWindowTitle(self.sessionToken['nif'])
         pass
 
     def fill_combo_exp(self,index:int) -> None:
@@ -224,6 +234,8 @@ class AgraeAPP:
             data = self.comboCampanias.currentData()
             for i,e in zip(self.campania_data[str(data)]['idexplotacion'],self.campania_data[str(data)]['name_exp']):
                 self.comboExplotacion.addItem(e,i)
+
+        self.comboExplotacion.setCurrentIndex(self.comboExplotacion.count()-1)
         return
 
     def load_layer(self,endpoint,nombre,token,style):
@@ -242,3 +254,19 @@ class AgraeAPP:
             self.identifyTool = selectTool(active_layer,self.sessionToken) #Create the tool with the active layer.
         #iface.setActiveLayer(active_layer) #set the correct active layer to tool
         self.iface.mapCanvas().setMapTool(self.identifyTool)
+
+
+    def setWindowTitle(self,nif: str = None):
+        if nif == None:
+            self.iface.mainWindow().setWindowTitle('QGIS | Mapeo Integral | Debe Inciar Sesión')
+        else: 
+            self.iface.mainWindow().setWindowTitle('QGIS | Mapeo Integral | Usuario: {}'.format(nif))
+
+    def save_csv(self):
+        
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getSaveFileName(None,"Exportar Resumen de Fertilizacion","","CSV Files (*.csv);;All Files (*)", options=options)
+        if fileName:
+            print(fileName)
+    
