@@ -38,7 +38,6 @@ class LoginForm(QDialog):
         self.logo.setScaledContents(True)
         self.line_user = QLineEdit()
         self.line_user.setPlaceholderText('Usuario')
-        self.line_user.setText('F34004150')
         self.line_user.setStyleSheet("""
         QLineEdit {
             width: 13em;
@@ -50,7 +49,6 @@ class LoginForm(QDialog):
         """)
         self.line_password = QgsPasswordLineEdit()
         self.line_password.setPlaceholderText('Contraseña')
-        self.line_password.setText('23826405')
         self.line_password.setStyleSheet("""
         QLineEdit {
             width: 13em;
@@ -103,11 +101,7 @@ class LoginForm(QDialog):
                 QMessageBox.information(self, 'Mapeo Integral | aGrae', 'Sesion Iniciada.'.format())
                 self.close()
                 
-                # headers = {'Authorization': '{} {}'.format(token_data['token_type'],token_data['access_token'])}
-                # response = requests.get(f"{aGraeTools().endpoint_url}/get_ids/?nif={user_nif}",headers=headers)
-                # data = response.json()
-                # if data:
-                #     self.idsExplotacionesSignal.emit(data)
+ 
                 
 
                 
